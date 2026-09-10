@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>CHASE — 3D Infinite Chase</title>
+<title>Olive Delights</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   :root{
@@ -147,12 +147,15 @@
   <button id="muteBtn">MUTE MUSIC</button>
 </div>
 
+<button id="jumpBtn" style="position:fixed;right:22px;bottom:90px;width:76px;height:76px;border-radius:50%;background:rgba(93,242,106,0.15);border:2px solid #5df26a;color:#5df26a;font-family:'Courier New',Consolas,monospace;font-weight:bold;font-size:14px;letter-spacing:1px;z-index:10;touch-action:none;user-select:none;">JUMP</button>
+
 <div class="overlay" id="startOverlay">
-  <h1>IT'S BEHIND YOU</h1>
-  <p>An open field. Something is following you, and it never stops. There's no clock to beat — just see how long you last.</p>
+  <h1>OLIVE DELIGHTS</h1>
+  <p>The Ashgrove Hotel, after hours. Something is loose in the corridors and it moves exactly as fast as you do — it will never catch you in a straight line, but it can vanish from a hallway and reappear in another. Use the rooms, jump the furniture, keep your eyes open.</p>
   <div class="keys">
     <div class="key">W A S D — move</div>
     <div class="key">MOUSE — look</div>
+    <div class="key">SPACE — jump</div>
     <div class="key">ESC — release cursor</div>
   </div>
   <button class="primary" id="startBtn">START RUNNING</button>
@@ -201,7 +204,7 @@ moon.position.set(-30, 40, -20);
 scene.add(moon);
 
 // ---------- ground (checkered procedural texture) ----------
-const MAP_SIZE = 220;
+const MAP_SIZE = 260;
 function makeGroundTexture() {
   const size = 512;
   const c = document.createElement('canvas');
@@ -227,42 +230,126 @@ scene.add(ground);
 
 // boundary walls (low, just to visually cap the map)
 const wallMat = new THREE.MeshStandardMaterial({ color: 0x1c232c });
-function addWall(x, z, w, d) {
+const wallColliders = []; // rectangular colliders: {x, z, hw, hd} (half-width, half-depth)
+function addWall(x, z, w, d, collide = true) {
   const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 3, d), wallMat);
   wall.position.set(x, 1.5, z);
   scene.add(wall);
+  if (collide) wallColliders.push({ x, z, hw: w / 2, hd: d / 2 });
   return wall;
 }
-const half = MAP_SIZE/2;
-addWall(0, -half, MAP_SIZE, 1);
-addWall(0, half, MAP_SIZE, 1);
-addWall(-half, 0, 1, MAP_SIZE);
-addWall(half, 0, 1, MAP_SIZE);
+const half = MAP_SIZE / 2;
+addWall(0, -half, MAP_SIZE, 1, false);
+addWall(0, half, MAP_SIZE, 1, false);
+addWall(-half, 0, 1, MAP_SIZE, false);
+addWall(half, 0, 1, MAP_SIZE, false);
 
-// scattered obstacle pillars for a "decent size" map with cover
+// circular obstacles: pillars (solid) and low furniture (jumpable)
 const obstacles = [];
 const obstacleMat = new THREE.MeshStandardMaterial({ color: 0x2a3542 });
-function addObstacle(x, z, s) {
-  const box = new THREE.Mesh(new THREE.BoxGeometry(s, s*1.6, s), obstacleMat);
-  box.position.set(x, s*0.8, z);
+const furnitureMat = new THREE.MeshStandardMaterial({ color: 0x35402c });
+function addObstacle(x, z, s, jumpable = false) {
+  const h = jumpable ? s * 0.85 : s * 1.6;
+  const box = new THREE.Mesh(new THREE.BoxGeometry(s, h, s), jumpable ? furnitureMat : obstacleMat);
+  box.position.set(x, h / 2, z);
   scene.add(box);
-  obstacles.push({ mesh: box, x, z, r: s*0.75 });
+  obstacles.push({ mesh: box, x, z, r: s * 0.7, jumpable });
 }
-(function scatterObstacles(){
-  let placed = 0;
-  while (placed < 26) {
-    const x = (Math.random() - 0.5) * (MAP_SIZE - 20);
-    const z = (Math.random() - 0.5) * (MAP_SIZE - 20);
-    if (Math.hypot(x, z) < 12) continue; // keep spawn clear
-    addObstacle(x, z, 2.2 + Math.random()*2.2);
-    placed++;
+
+// ---------- hotel-floor layout: a lattice of corridors and rooms ----------
+// Two wide cross-corridors keep the center open (and the player's spawn clear);
+// everywhere else is built from a grid of partition walls with randomized
+// doorway gaps, so the map reads as a maze of hallways and rooms rather than
+// an open field.
+(function buildHotelFloor(){
+  const CELL = 22;          // room/corridor grid spacing
+  const CORRIDOR_HALF = 5;  // half-width of the two main cross corridors
+  const SPAWN_CLEAR = 13;   // keep the very center free so the player doesn't spawn boxed in
+  const inner = half - 6;
+
+  function inMainCorridor(v) { return Math.abs(v) < CORRIDOR_HALF; }
+
+  // interior partition walls running north-south (along z), one per column line
+  for (let x = -inner; x <= inner; x += CELL) {
+    if (inMainCorridor(x)) continue; // don't wall off the main corridor
+    let z = -inner;
+    while (z < inner) {
+      const segLen = 6 + Math.random() * 5;
+      const doorway = Math.random() < 0.4;
+      const segMid = z + segLen / 2;
+      const crossesMainCorridor = Math.abs(segMid) < CORRIDOR_HALF + segLen / 2;
+      if (!doorway && Math.hypot(x, segMid) > SPAWN_CLEAR && !crossesMainCorridor) {
+        addWall(x, segMid, 0.6, segLen);
+      }
+      z += segLen + (doorway ? 5.5 : 0.6);
+    }
+  }
+
+  // interior partition walls running east-west (along x), one per row line
+  for (let z = -inner; z <= inner; z += CELL) {
+    if (inMainCorridor(z)) continue;
+    let x = -inner;
+    while (x < inner) {
+      const segLen = 6 + Math.random() * 5;
+      const doorway = Math.random() < 0.4;
+      const segMid = x + segLen / 2;
+      const crossesMainCorridor = Math.abs(segMid) < CORRIDOR_HALF + segLen / 2;
+      if (!doorway && Math.hypot(segMid, z) > SPAWN_CLEAR && !crossesMainCorridor) {
+        addWall(segMid, z, segLen, 0.6);
+      }
+      x += segLen + (doorway ? 5.5 : 0.6);
+    }
+  }
+
+  // low jumpable furniture (luggage carts, benches) scattered through the rooms
+  let placedFurniture = 0;
+  let tries = 0;
+  while (placedFurniture < 30 && tries < 600) {
+    tries++;
+    const x = (Math.random() - 0.5) * (MAP_SIZE - 24);
+    const z = (Math.random() - 0.5) * (MAP_SIZE - 24);
+    if (Math.hypot(x, z) < SPAWN_CLEAR) continue;
+    if (collidesWithWallsRaw(x, z, 1.6)) continue;
+    addObstacle(x, z, 1.6 + Math.random() * 0.8, true);
+    placedFurniture++;
+  }
+
+  // a handful of solid, non-jumpable pillars for harder cover
+  let placedPillars = 0;
+  tries = 0;
+  while (placedPillars < 10 && tries < 400) {
+    tries++;
+    const x = (Math.random() - 0.5) * (MAP_SIZE - 24);
+    const z = (Math.random() - 0.5) * (MAP_SIZE - 24);
+    if (Math.hypot(x, z) < SPAWN_CLEAR) continue;
+    if (collidesWithWallsRaw(x, z, 2.2)) continue;
+    addObstacle(x, z, 2.0 + Math.random() * 1.4, false);
+    placedPillars++;
   }
 })();
 
+// raw wall-collision test used only during layout generation (obstacles[] doesn't exist as walls yet)
+function collidesWithWallsRaw(x, z, radius) {
+  for (const w of wallColliders) {
+    const cx = Math.max(w.x - w.hw, Math.min(x, w.x + w.hw));
+    const cz = Math.max(w.z - w.hd, Math.min(z, w.z + w.hd));
+    const dx = x - cx, dz = z - cz;
+    if (dx * dx + dz * dz < radius * radius) return true;
+  }
+  return false;
+}
+
 // ---------- player (first person, no visible body) ----------
-const player = { x: 0, z: 0, yaw: 0, pitch: 0 };
+const player = { x: 0, z: 0, yaw: 0, pitch: 0, yOffset: 0, vy: 0, jumping: false, vx: 0, vz: 0 };
 const EYE_HEIGHT = 1.65;
 const PLAYER_RADIUS = 0.5;
+const JUMP_VELOCITY = 8.6;
+const GRAVITY = 24;
+function tryJump() {
+  if (!running || player.jumping) return;
+  player.vy = JUMP_VELOCITY;
+  player.jumping = true;
+}
 
 // ---------- chaser (billboard sprite using swappable image) ----------
 const texLoader = new THREE.TextureLoader();
@@ -273,6 +360,10 @@ const chaserSprite = new THREE.Sprite(chaserMat);
 chaserSprite.scale.set(4.2, 4.2, 1);
 chaserSprite.position.set(20, 2.1, 20);
 scene.add(chaserSprite);
+const chaserVel = { x: 0, z: 0 };
+// Tracks whether the chaser is actually making progress, so we can kick it
+// sideways out of corners/dead-ends where pure repulsion would stall it.
+const chaserStuck = { timer: 0, lastX: chaserSprite.position.x, lastZ: chaserSprite.position.z, escapeTimer: 0, escapeSign: 1 };
 
 // soft shadow blob under chaser
 const blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 });
@@ -313,7 +404,7 @@ const bgm = document.getElementById('bgm');
 let muted = false;
 try {
   bgm.src = AUDIO_SRC;
-  bgm.volume = 0.55;
+  bgm.volume = BASE_VOLUME;
   bgm.addEventListener('error', () => console.error('bgm error', bgm.error));
   document.getElementById('muteBtn').addEventListener('click', () => {
     muted = !muted;
@@ -329,7 +420,7 @@ const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 if (isTouch) {
   const keysEl = document.querySelector('#startOverlay .keys');
   if (keysEl) {
-    keysEl.innerHTML = '<div class="key">LEFT SIDE — drag to move</div><div class="key">RIGHT SIDE — drag to look</div>';
+    keysEl.innerHTML = '<div class="key">LEFT SIDE — drag to move</div><div class="key">RIGHT SIDE — drag to look</div><div class="key">JUMP button — hop over low obstacles</div>';
   }
 }
 
@@ -406,31 +497,114 @@ window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
 // ---------- input ----------
 const keys = {};
-window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keydown', (e) => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.code === 'Space' || e.key === ' ') { tryJump(); e.preventDefault(); }
+});
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-function collidesWithObstacles(x, z, radius) {
+const jumpBtnEl = document.getElementById('jumpBtn');
+if (jumpBtnEl) {
+  jumpBtnEl.addEventListener('pointerdown', (e) => { e.preventDefault(); tryJump(); });
+  jumpBtnEl.addEventListener('touchstart', (e) => { e.preventDefault(); tryJump(); }, { passive: false });
+}
+
+function collidesWithWalls(x, z, radius) {
+  for (const w of wallColliders) {
+    const cx = Math.max(w.x - w.hw, Math.min(x, w.x + w.hw));
+    const cz = Math.max(w.z - w.hd, Math.min(z, w.z + w.hd));
+    const dx = x - cx, dz = z - cz;
+    if (dx * dx + dz * dz < radius * radius) return true;
+  }
+  return false;
+}
+function collidesWithObstacles(x, z, radius, canJumpOver) {
   for (const o of obstacles) {
+    if (canJumpOver && o.jumpable) continue; // airborne players clear low furniture
     const dx = x - o.x, dz = z - o.z;
     if (Math.hypot(dx, dz) < radius + o.r) return true;
   }
   return false;
+}
+function blocked(x, z, radius, canJumpOver) {
+  return collidesWithWalls(x, z, radius) || collidesWithObstacles(x, z, radius, canJumpOver);
 }
 
 // ---------- game state ----------
 let running = false;
 let startTime = 0;
 let elapsed = 0;
-let chaserSpeed = 3.4;
-const PLAYER_SPEED = 5.2;
+// The chaser moves at exactly the player's speed: it can never gain ground on
+// you and you can never outrun it in a straight line. The only way to survive
+// is to break its line of sight using the hotel's rooms and corridors -
+// otherwise it will periodically vanish and reappear somewhere nearby.
+const PLAYER_SPEED = 13.5;
+let chaserSpeed = PLAYER_SPEED;
+const CHASER_RADIUS = 1.1;
 const CATCH_DIST = 1.6;
 const BOUND = half - 2;
+// Higher = snappier accel/decel, lower = floatier/more fluid momentum.
+const MOVE_SMOOTHING = 9;
+const CHASER_SMOOTHING = 7;
+// Proximity-based music: quiet and distant when the chaser is far,
+// swelling toward MAX_VOLUME as it closes in.
+const BASE_VOLUME = 0.25;
+const MAX_VOLUME = 1.0;
+const PROXIMITY_RANGE = 30; // distance (m) at which volume starts ramping up
+const VOLUME_SMOOTHING = 4; // eases volume changes so it doesn't zipper
+let teleportCooldown = 4 + Math.random() * 3;
 
 function resetPositions() {
   player.x = 0; player.z = 0; player.yaw = 0; player.pitch = 0;
+  player.yOffset = 0; player.vy = 0; player.jumping = false;
+  player.vx = 0; player.vz = 0;
   const angle = Math.random() * Math.PI * 2;
-  chaserSprite.position.set(Math.cos(angle) * 26, 2.1, Math.sin(angle) * 26);
-  chaserSpeed = 3.4;
+  chaserSprite.position.set(Math.cos(angle) * 30, 2.1, Math.sin(angle) * 30);
+  chaserSpeed = PLAYER_SPEED;
+  chaserVel.x = 0; chaserVel.z = 0;
+  chaserStuck.timer = 0; chaserStuck.escapeTimer = 0; chaserStuck.escapeSign = 1;
+  chaserStuck.lastX = chaserSprite.position.x; chaserStuck.lastZ = chaserSprite.position.z;
+  teleportCooldown = 4 + Math.random() * 3;
+}
+
+// Is the chaser currently visible to the player (inside the view cone and not
+// blocked by a wall/obstacle)? Used to decide when it's allowed to teleport.
+function chaserVisibleToPlayer() {
+  const dx = chaserSprite.position.x - player.x;
+  const dz = chaserSprite.position.z - player.z;
+  const dist = Math.hypot(dx, dz);
+  if (dist < 0.001) return true;
+  const toChaserYaw = Math.atan2(dx, dz);
+  let diff = toChaserYaw - player.yaw;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  const HALF_FOV = (65 / 2) * (Math.PI / 180) * 1.2;
+  if (Math.abs(diff) > HALF_FOV) return false;
+  const steps = 14;
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const px = player.x + dx * t, pz = player.z + dz * t;
+    if (collidesWithWalls(px, pz, 0.25) || collidesWithObstacles(px, pz, 0.25, false)) return false;
+  }
+  return true;
+}
+
+// Teleport the chaser to a spot the player will notice went wrong (not right
+// on top of them) but can't currently see - only ever while it's hidden.
+function tryTeleportChaser() {
+  if (chaserVisibleToPlayer()) return;
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 16 + Math.random() * 14;
+    const tx = Math.max(-BOUND, Math.min(BOUND, player.x + Math.sin(ang) * dist));
+    const tz = Math.max(-BOUND, Math.min(BOUND, player.z + Math.cos(ang) * dist));
+    if (!blocked(tx, tz, CHASER_RADIUS, false)) {
+      chaserSprite.position.x = tx;
+      chaserSprite.position.z = tz;
+      showToast('Something moved.');
+      return;
+    }
+  }
 }
 
 function startGame() {
@@ -441,6 +615,7 @@ function startGame() {
   document.getElementById('endOverlay').classList.add('hidden');
   try {
     bgm.currentTime = 0;
+    bgm.volume = BASE_VOLUME;
     const playPromise = bgm.play();
     if (playPromise) playPromise.catch((err) => console.error('bgm play failed', err));
   } catch (err) {
@@ -471,8 +646,21 @@ function update(dt) {
   elapsed = (performance.now() - startTime) / 1000;
   document.getElementById('timer').textContent = elapsed.toFixed(1) + 's';
 
-  // slowly ramp difficulty since this is infinite survival
-  chaserSpeed = 3.4 + Math.min(elapsed / 25, 2.6);
+  // The chaser always matches the player's top speed exactly - it never gains
+  // ground on you in a straight line, and you never gain ground on it.
+  chaserSpeed = PLAYER_SPEED;
+
+  // --- jump physics ---
+  if (player.jumping) {
+    player.vy -= GRAVITY * dt;
+    player.yOffset += player.vy * dt;
+    if (player.yOffset <= 0) {
+      player.yOffset = 0;
+      player.vy = 0;
+      player.jumping = false;
+    }
+  }
+  const canJumpOver = player.jumping && player.yOffset > 0.55;
 
   // --- player movement, relative to look direction (yaw only, horizontal) ---
   const forward = { x: Math.sin(player.yaw), z: Math.cos(player.yaw) };
@@ -489,19 +677,30 @@ function update(dt) {
   let mx = -forward.x * fwdInput + right.x * strafeInput;
   let mz = -forward.z * fwdInput + right.z * strafeInput;
 
+  let targetVx = 0, targetVz = 0;
   if (mx !== 0 || mz !== 0) {
     const len = Math.hypot(mx, mz);
     mx /= len; mz /= len;
     const speedScale = Math.min(1, Math.hypot(fwdInput, strafeInput));
-    const nx = player.x + mx * PLAYER_SPEED * speedScale * dt;
-    const nz = player.z + mz * PLAYER_SPEED * speedScale * dt;
+    targetVx = mx * PLAYER_SPEED * speedScale;
+    targetVz = mz * PLAYER_SPEED * speedScale;
+  }
+  // Ease current velocity toward the target instead of snapping to it -
+  // gives the player momentum/glide instead of instant start-stop.
+  const moveEase = 1 - Math.exp(-MOVE_SMOOTHING * dt);
+  player.vx += (targetVx - player.vx) * moveEase;
+  player.vz += (targetVz - player.vz) * moveEase;
+
+  if (Math.abs(player.vx) > 0.001 || Math.abs(player.vz) > 0.001) {
+    const nx = player.x + player.vx * dt;
+    const nz = player.z + player.vz * dt;
     const cx = Math.max(-BOUND, Math.min(BOUND, nx));
     const cz = Math.max(-BOUND, Math.min(BOUND, nz));
-    if (!collidesWithObstacles(cx, player.z, PLAYER_RADIUS)) player.x = cx;
-    if (!collidesWithObstacles(player.x, cz, PLAYER_RADIUS)) player.z = cz;
+    if (!blocked(cx, player.z, PLAYER_RADIUS, canJumpOver)) player.x = cx; else player.vx = 0;
+    if (!blocked(player.x, cz, PLAYER_RADIUS, canJumpOver)) player.z = cz; else player.vz = 0;
   }
 
-  // --- chaser AI: steer toward player, mildly avoid obstacles ---
+  // --- chaser AI: steer toward player, avoid obstacles/walls ---
   const toPlayer = new THREE.Vector2(
     player.x - chaserSprite.position.x,
     player.z - chaserSprite.position.z
@@ -515,28 +714,103 @@ function update(dt) {
     const d = Math.hypot(dx, dz);
     if (d < o.r + 2.5) {
       const push = (o.r + 2.5 - d) / (o.r + 2.5);
-      steerX += (dx/d) * push * 1.6;
-      steerZ += (dz/d) * push * 1.6;
+      const nx = dx / d, nz = dz / d;
+      steerX += nx * push * 1.6;
+      steerZ += nz * push * 1.6;
+      // Tangential nudge (perpendicular to the push-away direction), biased
+      // toward whichever side the player is on, so the chaser curls around
+      // the obstacle instead of just being shoved straight back into it.
+      const tx = -nz, tz = nx;
+      const side = (tx * toPlayer.x + tz * toPlayer.y) >= 0 ? 1 : -1;
+      steerX += tx * side * push * 1.2;
+      steerZ += tz * side * push * 1.2;
     }
   }
+  for (const w of wallColliders) {
+    const cx = Math.max(w.x - w.hw, Math.min(chaserSprite.position.x, w.x + w.hw));
+    const cz = Math.max(w.z - w.hd, Math.min(chaserSprite.position.z, w.z + w.hd));
+    const dx = chaserSprite.position.x - cx, dz = chaserSprite.position.z - cz;
+    const d = Math.hypot(dx, dz);
+    if (d < 3 && d > 0.0001) {
+      const push = (3 - d) / 3;
+      const nx = dx / d, nz = dz / d;
+      steerX += nx * push * 1.4;
+      steerZ += nz * push * 1.4;
+      // Same tangential slide-around trick for flat walls/corners.
+      const tx = -nz, tz = nx;
+      const side = (tx * toPlayer.x + tz * toPlayer.y) >= 0 ? 1 : -1;
+      steerX += tx * side * push * 1.2;
+      steerZ += tz * side * push * 1.2;
+    }
+  }
+
+  // --- stuck detector: if the chaser hasn't actually covered ground despite
+  // trying to, it's wedged in a corner/dead-end where the push vectors are
+  // cancelling out. Periodically check real displacement and, if it's too
+  // small, inject a strong sideways kick (alternating sides) until it frees
+  // itself. This is on top of the tangential nudges above, not instead of.
+  chaserStuck.timer += dt;
+  if (chaserStuck.timer > 0.4) {
+    const moved = Math.hypot(
+      chaserSprite.position.x - chaserStuck.lastX,
+      chaserSprite.position.z - chaserStuck.lastZ
+    );
+    if (moved < 0.35 && dist > CATCH_DIST + 0.5) {
+      chaserStuck.escapeTimer = 0.8;
+      chaserStuck.escapeSign *= -1;
+    }
+    chaserStuck.lastX = chaserSprite.position.x;
+    chaserStuck.lastZ = chaserSprite.position.z;
+    chaserStuck.timer = 0;
+  }
+  if (chaserStuck.escapeTimer > 0) {
+    chaserStuck.escapeTimer -= dt;
+    const tx = -toPlayer.y, tz = toPlayer.x;
+    steerX += tx * chaserStuck.escapeSign * 2.4 - toPlayer.x * 0.5;
+    steerZ += tz * chaserStuck.escapeSign * 2.4 - toPlayer.y * 0.5;
+  }
+
   const steerLen = Math.hypot(steerX, steerZ) || 1;
   steerX /= steerLen; steerZ /= steerLen;
 
-  const nx2 = chaserSprite.position.x + steerX * chaserSpeed * dt;
-  const nz2 = chaserSprite.position.z + steerZ * chaserSpeed * dt;
-  chaserSprite.position.x = Math.max(-BOUND, Math.min(BOUND, nx2));
-  chaserSprite.position.z = Math.max(-BOUND, Math.min(BOUND, nz2));
+  // Same momentum easing as the player, so the chaser glides through turns
+  // instead of snapping direction instantly.
+  const chaserEase = 1 - Math.exp(-CHASER_SMOOTHING * dt);
+  chaserVel.x += (steerX * chaserSpeed - chaserVel.x) * chaserEase;
+  chaserVel.z += (steerZ * chaserSpeed - chaserVel.z) * chaserEase;
+
+  const nx2 = chaserSprite.position.x + chaserVel.x * dt;
+  const nz2 = chaserSprite.position.z + chaserVel.z * dt;
+  const ccx = Math.max(-BOUND, Math.min(BOUND, nx2));
+  const ccz = Math.max(-BOUND, Math.min(BOUND, nz2));
+  if (!blocked(ccx, chaserSprite.position.z, CHASER_RADIUS, false)) chaserSprite.position.x = ccx;
+  if (!blocked(chaserSprite.position.x, ccz, CHASER_RADIUS, false)) chaserSprite.position.z = ccz;
   chaserSprite.position.y = 2.1 + Math.sin(elapsed * 8) * 0.12; // bob for menace
   blob.position.set(chaserSprite.position.x, 0.02, chaserSprite.position.z);
 
+  // --- teleport: only while the chaser is out of the player's sight ---
+  teleportCooldown -= dt;
+  if (teleportCooldown <= 0) {
+    teleportCooldown = 4.5 + Math.random() * 4;
+    tryTeleportChaser();
+  }
+
   document.getElementById('distance').textContent = dist.toFixed(1) + 'm';
+
+  // --- proximity-based music: volume rises as the chaser gets closer ---
+  const proximityT = 1 - Math.min(1, Math.max(0, dist / PROXIMITY_RANGE));
+  const targetVolume = BASE_VOLUME + (MAX_VOLUME - BASE_VOLUME) * proximityT;
+  const volEase = 1 - Math.exp(-VOLUME_SMOOTHING * dt);
+  if (!muted) {
+    bgm.volume += (targetVolume - bgm.volume) * volEase;
+  }
 
   if (dist < CATCH_DIST) {
     endGame();
   }
 
   // --- camera: first person, locked to player position + mouse look ---
-  camera.position.set(player.x, EYE_HEIGHT, player.z);
+  camera.position.set(player.x, EYE_HEIGHT + player.yOffset, player.z);
   camera.rotation.order = 'YXZ';
   camera.rotation.y = player.yaw;
   camera.rotation.x = player.pitch;
