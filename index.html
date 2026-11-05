@@ -139,6 +139,11 @@
   </div>
 </div>
 
+<div id="staminaWrap" style="position:fixed;top:92px;left:50%;transform:translateX(-50%);width:min(240px,60vw);z-index:10;pointer-events:none;">
+  <div style="font-size:11px;letter-spacing:1px;color:#7b8794;margin-bottom:4px;text-align:center;font-family:'Courier New',Consolas,monospace;">STAMINA</div>
+  <div style="height:12px;background:rgba(13,17,23,0.72);border:1px solid #2c6b33;"><div id="staminaFill" style="height:100%;width:100%;background:#5df26a;"></div></div>
+</div>
+
 <div id="crosshair-msg"></div>
 
 <div class="controls-bar">
@@ -152,7 +157,7 @@
 
 <div class="overlay" id="startOverlay">
   <h1>OLIVE DELIGHTS</h1>
-  <p>The Ashgrove Hotel, after hours. Something is loose in the corridors and it moves exactly as fast as you do — it will never catch you in a straight line, but it can vanish from a hallway and reappear in another. Use the rooms, jump the furniture, keep your eyes open.</p>
+  <p>The Ashgrove Hotel, after hours. Something is loose in the corridors and it runs a little faster than you can walk. Sprint to pull away, but your stamina won't last forever. Use the rooms, jump the furniture, keep your eyes open.</p>
   <div class="keys">
     <div class="key">W A S D — move</div>
     <div class="key">MOUSE — look</div>
@@ -183,8 +188,8 @@ const AUDIO_SRC = "data:audio/mpeg;base64,SUQzAwAAAAAAI1RTU0UAAAAPAAAATGF2ZjYwLj
 // ---------- basic setup ----------
 const wrap = document.getElementById('canvas-wrap');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x05070a);
-scene.fog = new THREE.Fog(0x05070a, 25, 90);
+scene.background = new THREE.Color(0x1b2636);
+scene.fog = new THREE.Fog(0x1b2636, 60, 220); // pushed way out so the whole map stays visible
 
 const camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 500);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -199,9 +204,10 @@ window.addEventListener('resize', () => {
 });
 
 // ---------- lighting ----------
-const hemi = new THREE.HemisphereLight(0x88aaff, 0x223311, 0.55);
+const hemi = new THREE.HemisphereLight(0xaac4ff, 0x556644, 1.5);
 scene.add(hemi);
-const moon = new THREE.DirectionalLight(0xaad4ff, 0.6);
+scene.add(new THREE.AmbientLight(0xffffff, 1.1)); // flat fill so nothing is pitch black
+const moon = new THREE.DirectionalLight(0xcfe4ff, 1.1);
 moon.position.set(-30, 40, -20);
 scene.add(moon);
 
@@ -216,7 +222,7 @@ function makeGroundTexture() {
   const t = size / tiles;
   for (let y = 0; y < tiles; y++) {
     for (let x = 0; x < tiles; x++) {
-      ctx.fillStyle = (x + y) % 2 === 0 ? '#10151b' : '#0a0d12';
+      ctx.fillStyle = (x + y) % 2 === 0 ? '#3a4757' : '#2e3947';
       ctx.fillRect(x*t, y*t, t, t);
     }
   }
@@ -231,7 +237,7 @@ ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
 // boundary walls (low, just to visually cap the map)
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x1c232c });
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x5a6a7e });
 const wallColliders = []; // rectangular colliders: {x, z, hw, hd} (half-width, half-depth)
 function addWall(x, z, w, d, collide = true) {
   const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 3, d), wallMat);
@@ -248,8 +254,8 @@ addWall(half, 0, 1, MAP_SIZE, false);
 
 // circular obstacles: pillars (solid) and low furniture (jumpable)
 const obstacles = [];
-const obstacleMat = new THREE.MeshStandardMaterial({ color: 0x2a3542 });
-const furnitureMat = new THREE.MeshStandardMaterial({ color: 0x35402c });
+const obstacleMat = new THREE.MeshStandardMaterial({ color: 0x6c7f95 });
+const furnitureMat = new THREE.MeshStandardMaterial({ color: 0x5f8f48 });
 function addObstacle(x, z, s, jumpable = false) {
   const h = jumpable ? s * 0.85 : s * 1.6;
   const box = new THREE.Mesh(new THREE.BoxGeometry(s, h, s), jumpable ? furnitureMat : obstacleMat);
@@ -553,17 +559,23 @@ function blocked(x, z, radius, canJumpOver) {
 let running = false;
 let startTime = 0;
 let elapsed = 0;
-// The chaser moves at exactly the player's speed: it can never gain ground on
-// you and you can never outrun it in a straight line. The only way to survive
-// is to break its line of sight using the hotel's rooms and corridors -
-// otherwise it will periodically vanish and reappear somewhere nearby.
+// The chaser runs slightly faster than your walk speed and never teleports.
+// Sprint (limited by stamina) and break line of sight with the hotel's rooms
+// and corridors to survive.
 const PLAYER_SPEED = 13.5;
 const SPRINT_MULT = 1.55;
 // sprint.toggled = on-screen button state, active = actually sprinting this frame
-const sprint = { toggled: false, active: false, bobPhase: 0, bobAmp: 0 };
+const sprint = { toggled: false, active: false, bobPhase: 0, bobAmp: 0, stamina: 100, regenDelay: 0, exhausted: false };
+const STAMINA_MAX = 100;
+const STAMINA_DRAIN = 25;      // per second while sprinting (~4s of sprint)
+const STAMINA_REGEN = 16;      // per second while not sprinting
+const STAMINA_REGEN_DELAY = 0.8; // pause after sprinting before regen starts
+const STAMINA_RECOVER = 30;    // after running dry, you can't sprint until back above this
+
 const BOB_AMP_SPRINT = 0.085;  // vertical camera bob (metres) while sprinting
 const BOB_STRIDE = 0.62;       // radians of bob phase per metre travelled
-let chaserSpeed = PLAYER_SPEED;
+const CHASER_SPEED_MULT = 1.08; // chaser top speed vs. your walk speed (sprint is 1.55x, so sprinting outruns it)
+let chaserSpeed = PLAYER_SPEED * CHASER_SPEED_MULT;
 const CHASER_RADIUS = 1.1;
 const CATCH_DIST = 1.6;
 const BOUND = half - 2;
@@ -576,21 +588,20 @@ const BASE_VOLUME = 0.25;
 const MAX_VOLUME = 1.0;
 const PROXIMITY_RANGE = 30; // distance (m) at which volume starts ramping up
 const VOLUME_SMOOTHING = 4; // eases volume changes so it doesn't zipper
-let teleportCooldown = 4 + Math.random() * 3;
 
 function resetPositions() {
   player.x = 0; player.z = 0; player.yaw = 0; player.pitch = 0;
   player.yOffset = 0; player.vy = 0; player.jumping = false;
   player.vx = 0; player.vz = 0;
   sprint.toggled = false; sprint.active = false; sprint.bobPhase = 0; sprint.bobAmp = 0;
+  sprint.stamina = STAMINA_MAX; sprint.regenDelay = 0; sprint.exhausted = false;
   if (typeof setSprintUI === "function") setSprintUI();
   const angle = Math.random() * Math.PI * 2;
   chaserSprite.position.set(Math.cos(angle) * 30, 2.1, Math.sin(angle) * 30);
-  chaserSpeed = PLAYER_SPEED;
+  chaserSpeed = PLAYER_SPEED * CHASER_SPEED_MULT;
   chaserVel.x = 0; chaserVel.z = 0;
   chaserStuck.timer = 0; chaserStuck.escapeTimer = 0; chaserStuck.escapeSign = 1;
   chaserStuck.lastX = chaserSprite.position.x; chaserStuck.lastZ = chaserSprite.position.z;
-  teleportCooldown = 4 + Math.random() * 3;
 }
 
 // Is the chaser currently visible to the player (inside the view cone and not
@@ -672,9 +683,9 @@ function update(dt) {
   elapsed = (performance.now() - startTime) / 1000;
   document.getElementById('timer').textContent = elapsed.toFixed(1) + 's';
 
-  // The chaser always matches the player's top speed exactly - it never gains
-  // ground on you in a straight line, and you never gain ground on it.
-  chaserSpeed = PLAYER_SPEED;
+  // The chaser runs slightly faster than you can walk. Sprinting (while you
+  // have stamina) is how you pull away from it.
+  chaserSpeed = PLAYER_SPEED * CHASER_SPEED_MULT;
 
   // --- jump physics ---
   if (player.jumping) {
@@ -701,6 +712,24 @@ function update(dt) {
   strafeInput = Math.max(-1, Math.min(1, strafeInput + touchMove.strafe));
   // sprinting only while pushing forward
   sprint.active = (sprint.toggled || !!keys['shift']) && fwdInput > 0;
+  if (sprint.exhausted && sprint.stamina >= STAMINA_RECOVER) sprint.exhausted = false;
+  if (sprint.exhausted) sprint.active = false;
+  if (sprint.active) {
+    sprint.stamina -= STAMINA_DRAIN * dt;
+    sprint.regenDelay = STAMINA_REGEN_DELAY;
+    if (sprint.stamina <= 0) {
+      sprint.stamina = 0; sprint.exhausted = true; sprint.active = false;
+      sprint.toggled = false; setSprintUI();
+    }
+  } else {
+    sprint.regenDelay -= dt;
+    if (sprint.regenDelay <= 0) sprint.stamina = Math.min(STAMINA_MAX, sprint.stamina + STAMINA_REGEN * dt);
+  }
+  const staminaFillEl = document.getElementById('staminaFill');
+  if (staminaFillEl) {
+    staminaFillEl.style.width = (sprint.stamina / STAMINA_MAX * 100).toFixed(1) + '%';
+    staminaFillEl.style.background = sprint.exhausted ? '#ff4d4d' : (sprint.stamina < 30 ? '#f2c94c' : '#5df26a');
+  }
 
   let mx = -forward.x * fwdInput + right.x * strafeInput;
   let mz = -forward.z * fwdInput + right.z * strafeInput;
@@ -816,13 +845,6 @@ function update(dt) {
   if (!blocked(chaserSprite.position.x, ccz, CHASER_RADIUS, false)) chaserSprite.position.z = ccz;
   chaserSprite.position.y = 2.1 + Math.sin(elapsed * 8) * 0.12; // bob for menace
   blob.position.set(chaserSprite.position.x, 0.02, chaserSprite.position.z);
-
-  // --- teleport: only while the chaser is out of the player's sight ---
-  teleportCooldown -= dt;
-  if (teleportCooldown <= 0) {
-    teleportCooldown = 4.5 + Math.random() * 4;
-    tryTeleportChaser();
-  }
 
   document.getElementById('distance').textContent = dist.toFixed(1) + 'm';
 
