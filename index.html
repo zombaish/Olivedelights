@@ -148,6 +148,7 @@
 </div>
 
 <button id="jumpBtn" style="position:fixed;right:22px;bottom:90px;width:76px;height:76px;border-radius:50%;background:rgba(93,242,106,0.15);border:2px solid #5df26a;color:#5df26a;font-family:'Courier New',Consolas,monospace;font-weight:bold;font-size:14px;letter-spacing:1px;z-index:10;touch-action:none;user-select:none;">JUMP</button>
+<button id="sprintBtn" style="position:fixed;right:22px;bottom:180px;width:76px;height:76px;border-radius:50%;background:rgba(93,242,106,0.15);border:2px solid #5df26a;color:#5df26a;font-family:'Courier New',Consolas,monospace;font-weight:bold;font-size:12px;letter-spacing:1px;z-index:10;touch-action:none;user-select:none;">SPRINT</button>
 
 <div class="overlay" id="startOverlay">
   <h1>OLIVE DELIGHTS</h1>
@@ -156,6 +157,7 @@
     <div class="key">W A S D — move</div>
     <div class="key">MOUSE — look</div>
     <div class="key">SPACE — jump</div>
+    <div class="key">SHIFT — sprint</div>
     <div class="key">ESC — release cursor</div>
   </div>
   <button class="primary" id="startBtn">START RUNNING</button>
@@ -420,7 +422,7 @@ const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 if (isTouch) {
   const keysEl = document.querySelector('#startOverlay .keys');
   if (keysEl) {
-    keysEl.innerHTML = '<div class="key">LEFT SIDE — drag to move</div><div class="key">RIGHT SIDE — drag to look</div><div class="key">JUMP button — hop over low obstacles</div>';
+    keysEl.innerHTML = '<div class="key">LEFT SIDE — drag to move</div><div class="key">RIGHT SIDE — drag to look</div><div class="key">JUMP button — hop over low obstacles</div><div class="key">SPRINT button — tap to toggle</div>';
   }
 }
 
@@ -509,6 +511,23 @@ if (jumpBtnEl) {
   jumpBtnEl.addEventListener('touchstart', (e) => { e.preventDefault(); tryJump(); }, { passive: false });
 }
 
+// Sprint: Shift (hold) on desktop, SPRINT button (tap to toggle) on screen
+const sprintBtnEl = document.getElementById('sprintBtn');
+function setSprintUI() {
+  if (!sprintBtnEl) return;
+  const on = sprint.toggled;
+  sprintBtnEl.style.background = on ? 'rgba(93,242,106,0.55)' : 'rgba(93,242,106,0.15)';
+  sprintBtnEl.style.color = on ? '#08130a' : '#5df26a';
+}
+function toggleSprint() { if (!running) return; sprint.toggled = !sprint.toggled; setSprintUI(); }
+if (sprintBtnEl) {
+  // pointerdown does the toggle; touchstart only blocks scrolling and keeps the
+  // touch from also starting a look-drag in the window touch handler
+  sprintBtnEl.addEventListener('pointerdown', (e) => { e.preventDefault(); toggleSprint(); });
+  sprintBtnEl.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); }, { passive: false });
+}
+window.addEventListener('blur', () => { keys['shift'] = false; });
+
 function collidesWithWalls(x, z, radius) {
   for (const w of wallColliders) {
     const cx = Math.max(w.x - w.hw, Math.min(x, w.x + w.hw));
@@ -539,6 +558,11 @@ let elapsed = 0;
 // is to break its line of sight using the hotel's rooms and corridors -
 // otherwise it will periodically vanish and reappear somewhere nearby.
 const PLAYER_SPEED = 13.5;
+const SPRINT_MULT = 1.55;
+// sprint.toggled = on-screen button state, active = actually sprinting this frame
+const sprint = { toggled: false, active: false, bobPhase: 0, bobAmp: 0 };
+const BOB_AMP_SPRINT = 0.085;  // vertical camera bob (metres) while sprinting
+const BOB_STRIDE = 0.62;       // radians of bob phase per metre travelled
 let chaserSpeed = PLAYER_SPEED;
 const CHASER_RADIUS = 1.1;
 const CATCH_DIST = 1.6;
@@ -558,6 +582,8 @@ function resetPositions() {
   player.x = 0; player.z = 0; player.yaw = 0; player.pitch = 0;
   player.yOffset = 0; player.vy = 0; player.jumping = false;
   player.vx = 0; player.vz = 0;
+  sprint.toggled = false; sprint.active = false; sprint.bobPhase = 0; sprint.bobAmp = 0;
+  if (typeof setSprintUI === "function") setSprintUI();
   const angle = Math.random() * Math.PI * 2;
   chaserSprite.position.set(Math.cos(angle) * 30, 2.1, Math.sin(angle) * 30);
   chaserSpeed = PLAYER_SPEED;
@@ -673,6 +699,8 @@ function update(dt) {
   if (keys['a'] || keys['arrowleft']) strafeInput -= 1;
   fwdInput = Math.max(-1, Math.min(1, fwdInput + touchMove.forward));
   strafeInput = Math.max(-1, Math.min(1, strafeInput + touchMove.strafe));
+  // sprinting only while pushing forward
+  sprint.active = (sprint.toggled || !!keys['shift']) && fwdInput > 0;
 
   let mx = -forward.x * fwdInput + right.x * strafeInput;
   let mz = -forward.z * fwdInput + right.z * strafeInput;
@@ -682,8 +710,9 @@ function update(dt) {
     const len = Math.hypot(mx, mz);
     mx /= len; mz /= len;
     const speedScale = Math.min(1, Math.hypot(fwdInput, strafeInput));
-    targetVx = mx * PLAYER_SPEED * speedScale;
-    targetVz = mz * PLAYER_SPEED * speedScale;
+    const moveSpeed = PLAYER_SPEED * (sprint.active ? SPRINT_MULT : 1);
+    targetVx = mx * moveSpeed * speedScale;
+    targetVz = mz * moveSpeed * speedScale;
   }
   // Ease current velocity toward the target instead of snapping to it -
   // gives the player momentum/glide instead of instant start-stop.
@@ -810,10 +839,18 @@ function update(dt) {
   }
 
   // --- camera: first person, locked to player position + mouse look ---
-  camera.position.set(player.x, EYE_HEIGHT + player.yOffset, player.z);
+  // sprint bob: vertical dip per footstep + a faint side-to-side roll; fades in/out smoothly
+  const hSpeed = Math.hypot(player.vx, player.vz);
+  const bobTarget = (sprint.active && !player.jumping) ? BOB_AMP_SPRINT : 0;
+  sprint.bobAmp += (bobTarget - sprint.bobAmp) * (1 - Math.exp(-8 * dt));
+  sprint.bobPhase += hSpeed * BOB_STRIDE * dt;
+  const bobY = Math.sin(sprint.bobPhase * 2) * sprint.bobAmp;
+  const bobRoll = Math.sin(sprint.bobPhase) * sprint.bobAmp * 0.25;
+  camera.position.set(player.x, EYE_HEIGHT + player.yOffset + bobY, player.z);
   camera.rotation.order = 'YXZ';
   camera.rotation.y = player.yaw;
   camera.rotation.x = player.pitch;
+  camera.rotation.z = bobRoll;
 }
 
 function animate() {
