@@ -54,6 +54,7 @@ input[type="file"]{display:none}
 .chips{display:flex;justify-content:center;gap:10px;min-height:16px;margin-top:6px;font:italic 400 12px var(--body)}
 #crouchTag{color:var(--dim);opacity:0;transition:opacity .2s}
 #godTag{display:none;color:var(--lamp)}
+#decoyTag,#battTag{color:var(--brass-hi)}
 .pause{grid-area:p;justify-self:end;align-self:start;pointer-events:auto;display:flex;align-items:center;justify-content:center;width:42px;height:42px;padding:0;color:var(--brass-hi);background:linear-gradient(180deg,rgba(26,32,28,.9),rgba(8,11,10,.92));border:1px solid var(--brass);box-shadow:inset 0 0 0 3px rgba(0,0,0,.4),0 3px 10px rgba(0,0,0,.6);touch-action:none}
 .pause:hover{color:#fff;border-color:var(--brass-hi)}
 .pause svg{width:15px;height:15px;fill:currentColor;pointer-events:none}
@@ -70,12 +71,12 @@ body.paused #warn.on{animation-play-state:paused}
 @keyframes warnflash{0%{opacity:1}100%{opacity:.25}}
 
 /* ---- touch controls: brass buttons, only on touch devices ---- */
-.tc{display:none;position:fixed;right:calc(var(--sar) + 14px);bottom:calc(var(--sab) + 14px);z-index:10;grid-template-areas:". s" "c j";gap:10px}
+.tc{display:none;position:fixed;right:calc(var(--sar) + 14px);bottom:calc(var(--sab) + 14px);z-index:10;grid-template-areas:"t s" "c j";gap:10px}
 body.touch .tc{display:grid}
 .tbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:var(--tb);height:var(--tb);padding:0;border-radius:50%;color:var(--brass-hi);font:700 10px var(--display);letter-spacing:.08em;touch-action:none;-webkit-user-select:none;user-select:none;background:radial-gradient(circle at 35% 28%,rgba(78,68,42,.88),rgba(14,16,14,.88));border:2px solid var(--brass);box-shadow:inset 0 0 0 3px rgba(0,0,0,.45),0 3px 12px rgba(0,0,0,.7)}
 .tbtn svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tbtn.on{color:#1a1405;background:radial-gradient(circle at 35% 28%,#f0d58a,#a98a3a)}
-#sprintBtn{grid-area:s}#crouchBtn{grid-area:c}
+#sprintBtn{grid-area:s}#crouchBtn{grid-area:c}#throwBtn{grid-area:t}
 #jumpBtn{grid-area:j;width:calc(var(--tb)*1.15);height:calc(var(--tb)*1.15)}
 
 /* ---- menu footer (swap image / mute): only while a menu is open ---- */
@@ -112,6 +113,7 @@ body.touch .toast{left:calc(var(--sal) + 14px);transform:none;text-align:left;ma
 .sign{display:flex;align-items:center;gap:14px;margin:14px 0 4px;font:italic 400 clamp(14px,3.4vw,17px)/1.3 var(--body);color:var(--brass-hi)}
 .sign::before,.sign::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--brass-lo))}
 .sign::after{transform:scaleX(-1)}
+.ver{margin-top:16px;font:400 11px var(--digits);color:var(--dim);opacity:.7}
 .ledger{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 22px;min-height:20px;margin-top:12px;font:400 14px var(--body);color:var(--dim)}
 .ledger b{margin-left:6px;font:400 15px var(--digits);color:var(--lamp)}
 .notice{max-width:54ch;margin:16px auto 20px;text-align:left;font:400 clamp(14px,3.6vw,16px)/1.65 var(--body);color:#cfc8b3}
@@ -204,7 +206,7 @@ body.low .title{text-shadow:0 0 10px var(--neon)}
   <div class="stam" id="staminaWrap">
     <div class="lbl">Stamina</div>
     <div class="bar"><div id="staminaFill"></div></div>
-    <div class="chips"><span id="crouchTag">Crouching, quiet</span><span id="godTag">Invincible</span></div>
+    <div class="chips"><span id="decoyTag"></span><span id="battTag"></span><span id="crouchTag">Crouching, quiet</span><span id="godTag">Invincible</span></div>
   </div>
   <button class="pause" id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 16 16"><rect x="3" y="2" width="3.5" height="12"/><rect x="9.5" y="2" width="3.5" height="12"/></svg></button>
 </div>
@@ -217,6 +219,7 @@ body.low .title{text-shadow:0 0 10px var(--neon)}
 <div class="toast" id="toast"></div>
 
 <div class="tc">
+  <button class="tbtn" id="throwBtn" aria-label="Throw decoy"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>Decoy</button>
   <button class="tbtn" id="sprintBtn" aria-label="Sprint"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></svg>Sprint</button>
   <button class="tbtn" id="crouchBtn" aria-label="Crouch"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>Crouch</button>
   <button class="tbtn" id="jumpBtn" aria-label="Jump"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>Jump</button>
@@ -239,6 +242,7 @@ body.low .title{text-shadow:0 0 10px var(--neon)}
     <div class="key"><kbd>Space</kbd>Jump</div>
     <div class="key"><kbd>Shift</kbd>Sprint</div>
     <div class="key"><kbd>C</kbd>Crouch (hold)</div>
+    <div class="key"><kbd>E</kbd>Throw decoy</div>
     <div class="key"><kbd>P</kbd><kbd>Esc</kbd>Pause</div>
   </div>
   <div class="actions">
@@ -246,6 +250,7 @@ body.low .title{text-shadow:0 0 10px var(--neon)}
     <button class="btn gold" id="startGarageBtn" style="display:none">Start on floor 2</button>
     <div class="sec-row"><button class="ghost" data-gfx>Graphics: High</button><button class="ghost" data-admin>Admin</button></div>
   </div>
+  <div class="ver" data-ver></div>
 </div></div>
 
 <div class="overlay hidden" id="endOverlay"><div class="panel bad">
@@ -263,6 +268,7 @@ body.low .title{text-shadow:0 0 10px var(--neon)}
     <button class="btn gold" id="restartGarageBtn" style="display:none">Restart on floor 2</button>
     <div class="sec-row"><button class="ghost" data-gfx>Graphics: High</button><button class="ghost" data-admin>Admin</button></div>
   </div>
+  <div class="ver" data-ver></div>
 </div></div>
 
 <div class="overlay hidden" id="pauseOverlay"><div class="panel">
@@ -272,6 +278,7 @@ body.low .title{text-shadow:0 0 10px var(--neon)}
     <button class="btn" id="resumeBtn">Resume</button>
     <div class="sec-row"><button class="ghost" data-gfx>Graphics: High</button><button class="ghost" data-admin>Admin</button></div>
   </div>
+  <div class="ver" data-ver></div>
 </div></div>
 
 <div class="overlay hidden" id="adminOverlay"><div class="panel staff">
@@ -324,6 +331,8 @@ scene.fog = new THREE.FogExp2(0x050403, FOG_DENSITY);
 const camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 500);
 // ---------- graphics quality (remembered between visits) ----------
 // Antialiasing can only be chosen when the WebGL context is created, so the saved setting is read first.
+const GAME_VERSION = '1.0.0';   // bump this on each release
+document.querySelectorAll('[data-ver]').forEach((el) => { el.textContent = 'v' + GAME_VERSION; });
 const GFX_KEY = 'oliveDelightsGfx';
 const LOW_RES_SCALE = 0.75;   // low mode renders at this fraction of CSS pixels (never more than 1x)
 let lowGfx = false;
@@ -818,7 +827,7 @@ function playSfx(a, vol) {
   if (muted) return;
   try { a.pause(); a.currentTime = 0; a.volume = vol; const p = a.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
 }
-const ST = { BEAM_HALF: 0.19, BEAM_LEN: 75, PATROL: 4.2, WINDUP: 0.9, CHARGE: 23, KILL: 3.2, HEAR: 18 };
+const ST = { BEAM_HALF: 0.27, BEAM_LEN: 75, PATROL: 5.4, WINDUP: 0.55, CHARGE: 23, KILL: 3.4, HEAR: 32 };
 const stalker = { x: 0, z: 0, heading: 0, twist: 0, pitch: 0.22, state: 'patrol', t: 0, stateT: 0, wp: null, wait: 0,
                   seen: 0, heard: 0, heardSet: 0, cool: 0, phase: 0, lastStep: 0, walkAmp: 0 };
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -918,7 +927,7 @@ function stalkerLit() {
   _D.subVectors(_P, _L);
   const dist = _D.length();
   if (dist > ST.BEAM_LEN || dist < 0.5) return false;
-  if (crouch.amt > 0.7 && dist > 34) return false;   // crouched and far away: it can't find you
+  if (crouch.amt > 0.7 && dist > 22) return false;   // crouched and far away: it can't find you
   _D.divideScalar(dist);
   if (_D.dot(stDir) < Math.cos(ST.BEAM_HALF)) return false;
   for (let s = 1; s < 30; s++) {
@@ -935,7 +944,7 @@ function updateStalker(dt) {
   const S = stalker;
   S.t += dt; S.stateT += dt;
   const dxp = player.x - S.x, dzp = player.z - S.z, dist = Math.hypot(dxp, dzp);
-  const boost = Math.min(1.35, 1 + 0.05 * (floorNum - 2));
+  const boost = Math.min(1.8, 1 + 0.1 * (floorNum - 2));
   let speed = 0, aim = false;
 
   if (S.state === 'patrol') {
@@ -948,9 +957,12 @@ function updateStalker(dt) {
     if (S.heard > 0) S.heard -= dt;
     if (S.wait > 0) S.wait -= dt;
     else {
-      if (!S.wp || Math.hypot(S.wp.x - S.x, S.wp.z - S.z) < 4) {
-        S.wp = { x: (Math.random() * 2 - 1) * (BOUND - 14), z: (Math.random() * 2 - 1) * (BOUND - 14) };
-        if (Math.random() < 0.45) S.wait = 2 + Math.random() * 3;   // stops and listens
+      // it slowly tracks you: a fresh waypoint near your position every few seconds
+      S.home = (S.home || 0) - dt;
+      if (!S.wp || S.home <= 0 || Math.hypot(S.wp.x - S.x, S.wp.z - S.z) < 4) {
+        S.home = 3;
+        S.wp = { x: Math.max(-BOUND + 14, Math.min(BOUND - 14, player.x + (Math.random() - 0.5) * 16)), z: Math.max(-BOUND + 14, Math.min(BOUND - 14, player.z + (Math.random() - 0.5) * 16)) };
+        if (Math.random() < 0.15) S.wait = 1 + Math.random() * 1.5;   // stops and listens
       }
       if (S.wait <= 0) {
         const diff = wrapA(Math.atan2(S.wp.x - S.x, S.wp.z - S.z) - S.heading);
@@ -971,8 +983,8 @@ function updateStalker(dt) {
       if (S.stateT > ST.WINDUP) { S.state = 'charge'; S.stateT = 0; }
     } else {
       speed = Math.min(28, ST.CHARGE + 0.6 * (floorNum - 2));
-      if (S.stateT > 11) {   // lost you at last: the light goes pale again
-        S.state = 'patrol'; S.stateT = 0; S.seen = 0; S.cool = 5; S.wp = null; S.wait = 2;
+      if (S.stateT > 14) {   // lost you at last: the light goes pale again
+        S.state = 'patrol'; S.stateT = 0; S.seen = 0; S.cool = 2; S.wp = null; S.wait = 2;
         stBeamMat.color.setHex(0xfff1c4); stPoolMat.color.setHex(0xffffff);
       }
     }
@@ -1023,7 +1035,7 @@ function updateStalker(dt) {
   // spotted?
   if (S.state === 'patrol' && S.cool <= 0) {
     S.seen = stalkerLit() ? S.seen + dt : Math.max(0, S.seen - dt * 2);
-    if (S.seen > 0.12) {
+    if (S.seen > 0.08) {
       S.state = 'windup'; S.stateT = 0;
       stBeamMat.color.setHex(0xff5a3c); stPoolMat.color.setHex(0xff8a6a);
       playSfx(detectSfx, 1);
@@ -1279,7 +1291,7 @@ if (isTouch) document.body.classList.add('touch');
 if (isTouch) {
   const keysEl = document.querySelector('#startOverlay .keys');
   if (keysEl) {
-    keysEl.innerHTML = '<div class="key">Left side: drag to move</div><div class="key">Right side: drag to look</div><div class="key">Jump: hop over low obstacles</div><div class="key">Sprint: tap to toggle</div><div class="key">Crouch: tap to toggle</div>';
+    keysEl.innerHTML = '<div class="key">Left side: drag to move</div><div class="key">Right side: drag to look</div><div class="key">Jump: hop over low obstacles</div><div class="key">Sprint: tap to toggle</div><div class="key">Crouch: tap to toggle</div><div class="key">Decoy: throw a noise ahead</div>';
   }
 }
 
@@ -1363,6 +1375,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'm' || e.key === 'M') { if (window.toggleMute) window.toggleMute(); }
   if ((e.key === 'p' || e.key === 'P') && !e.repeat) togglePause();
   if (e.key === '`' && !e.repeat) { e.preventDefault(); openAdmin(); }
+  if ((e.key === 'e' || e.key === 'E') && !e.repeat) throwDecoy();
   if (e.code === 'Space' || e.key === ' ') { tryJump(); e.preventDefault(); }
 });
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
@@ -1441,6 +1454,7 @@ const SPRINT_MULT = 1.55;
 const crouch = { toggled: false, amt: 0, tripT: 0, tripDur: 1.15, tripSide: 1, tripTimer: 3 };
 const CROUCH_DROP = 0.85;   // how far the eye drops when fully crouched
 const chaserAI = { mode: 'hunt', target: { x: 0, z: 0 }, wp: null, wpT: 0, t: 0, lostT: 0, alertT: 0, searchT: 0, speedMul: 1 };
+let decoys = 3, decoyCd = 0, chaserWatch = 0, watchHinted = false, keyTick = 0, batt = 0, extrasReady = false;
 const sprint = { toggled: false, active: false, bobPhase: 0, bobAmp: 0, stamina: 100, regenDelay: 0, exhausted: false };
 const STAMINA_MAX = 100;
 const STAMINA_DRAIN = 25;      // per second while sprinting (~4s of sprint)
@@ -1450,7 +1464,7 @@ const STAMINA_RECOVER = 30;    // after running dry, you can't sprint until back
 
 const BOB_AMP_SPRINT = 0.085;  // vertical camera bob (metres) while sprinting
 const BOB_STRIDE = 0.62;       // radians of bob phase per metre travelled
-const CHASER_SPEED_MULT = 1.08; // chaser top speed vs. your walk speed (sprint is 1.55x, so sprinting outruns it)
+const CHASER_SPEED_MULT = 1.10; // chaser top speed vs. your walk speed (sprint is 1.55x, so sprinting outruns it)
 let chaserSpeed = PLAYER_SPEED * CHASER_SPEED_MULT;
 const CHASER_RADIUS = 1.1;
 const CATCH_DIST = 1.6;
@@ -1479,7 +1493,7 @@ const VOLUME_SMOOTHING = 4; // eases volume changes so it doesn't zipper
 // 3) Golden keys sit at fixed spots (glowing through the fog). Each one refills stamina
 //    but makes noise and calls a lunge down on you sooner.
 const RAMP_PER_SEC = 0.0015, RAMP_MAX = 1.12;       // chaser top speed creeps up over time
-const LUNGE_MULT = 1.4, LUNGE_WARN = 1.0, LUNGE_TIME = 2.2, LUNGE_RANGE = 55;
+const LUNGE_MULT = 1.37, LUNGE_WARN = 1.0, LUNGE_TIME = 2.2, LUNGE_RANGE = 55;
 // --- balance ---
 const LUNGE_MIN_DIST = 20;   // a lunge never starts while it's already this close: you always get breathing room
 const LOW_STAMINA = 30;      // below this a lunge is held back for up to LUNGE_DEFER_MAX seconds...
@@ -1493,6 +1507,7 @@ const warnDirEl = document.getElementById('warnDir');
 const cellsHudEl = document.getElementById('cellsHud');
 
 function speedBoost() {
+  if (lunge.state === 'lull') return 0.2;   // feint: it stalls before the real rush
   const ramp = Math.min(RAMP_MAX, 1 + elapsed * RAMP_PER_SEC);
   const lungeOn = lunge.state === 'active';
   const want = CHASER_SPEED_MULT * ramp * floorSpeedMult() * (lungeOn ? LUNGE_MULT : 1);
@@ -1500,7 +1515,7 @@ function speedBoost() {
   // a lunge stays just under it early on and only edges past it deep into the garage.
   const cap = lungeOn
     ? (lunge.soft ? 1.3 : Math.min(1.58, 1.42 + 0.02 * (floorNum - 1)))
-    : Math.min(1.3, 1.15 + 0.01 * (floorNum - 1));
+    : (floorNum > 1 ? Math.min(1.48, 1.3 + 0.02 * (floorNum - 2)) : Math.min(1.32, 1.18 + 0.01 * (floorNum - 1)));
   return Math.min(want, cap) / CHASER_SPEED_MULT;
 }
 
@@ -1508,7 +1523,7 @@ function speedBoost() {
 // Floor 1: the chaser hunts you, but if you crouch and get far enough away it loses you and wanders.
 // Garage: it just wanders (slowly), investigates noise, and only hunts when you get close. Sneak.
 function noiseRadius() {
-  if (crouch.amt > 0.7) return 7;                                  // crouched: nearly silent
+  if (crouch.amt > 0.7) return Math.hypot(player.vx, player.vz) < 0.3 ? 3 : 7;   // holding still = holding breath                                  // crouched: nearly silent
   if (sprint.active) return 30;                                    // sprinting: very loud
   return Math.hypot(player.vx, player.vz) > 2 ? 14 : 8;            // walking / standing still
 }
@@ -1520,18 +1535,22 @@ function setChaserHunt(noticed) {
 }
 function resetChaserAI() {
   const A = chaserAI;
-  A.mode = floorNum > 1 ? 'wander' : 'hunt';
-  A.wp = null; A.lostT = 0; A.alertT = 0; A.searchT = 0; A.speedMul = 1; A.target = { x: 0, z: 0 };
+  A.mode = floorNum > 1 ? 'search' : 'hunt';
+  A.wp = null; A.lostT = 0; A.alertT = 0; A.searchT = floorNum > 1 ? 14 : 0; A.speedMul = 1; A.target = { x: 0, z: 0 }; A.distractT = 0;
 }
 function updateChaserAI(dt, dist) {
   const A = chaserAI, floor2 = floorNum > 1, crouched = crouch.amt > 0.7;
   const cx = chaserSprite.position.x, cz = chaserSprite.position.z;
   A.t += dt;
   if (A.alertT > 0) A.alertT -= dt;
-  let noise = noiseRadius() * (floor2 ? 1 : 1.5);
+  let noise = noiseRadius() * (floor2 ? 2.2 : 1.5);
   if (floor2 && A.alertT > 0) noise = Math.max(noise, 28);          // a tripped-over crash carries
   if (A.mode === 'hunt') {
-    const loseDist = crouched ? (floor2 ? 14 : 18) : (floor2 ? 26 : Infinity);
+    const loseDist = crouched ? (floor2 ? 9 : 18) : (floor2 ? 70 : Infinity);
+    if (!floor2 && A.alertT <= 0 && dist > 28 && !clearLine(cx, cz, player.x, player.z)) {
+      A.hideT = (A.hideT || 0) + dt;   // out of sight behind walls and far enough away
+      if (A.hideT > 3) { A.mode = 'search'; A.searchT = 9; A.target = { x: player.x, z: player.z }; A.hideT = 0; showToast('YOU LOST IT - STAY QUIET'); }
+    } else A.hideT = 0;
     if (A.alertT <= 0 && dist > loseDist) {
       A.lostT += dt;
       if (A.lostT > 1.2) { A.mode = 'search'; A.searchT = 9; A.target = { x: player.x, z: player.z }; }
@@ -1543,28 +1562,33 @@ function updateChaserAI(dt, dist) {
   }
   let tx, tz;
   if (A.mode === 'hunt') {
-    tx = player.x; tz = player.z; A.speedMul = floor2 ? 0.7 : 1;
+    tx = player.x; tz = player.z; A.speedMul = 1;
   } else if (A.mode === 'search') {
-    tx = A.target.x; tz = A.target.z; A.speedMul = floor2 ? 0.5 : 0.75;
+    tx = A.target.x; tz = A.target.z; A.speedMul = floor2 ? 0.9 : 0.75;
     A.searchT -= dt;
     if (Math.hypot(tx - cx, tz - cz) < 3.5) A.searchT -= dt * 2;     // looks around once it gets there
     if (A.searchT <= 0) { A.mode = 'wander'; A.wp = null; }
   } else {
-    A.speedMul = floor2 ? 0.35 : 0.55;
+    A.speedMul = floor2 ? 0.7 : 0.55;
     if (!A.wp || Math.hypot(A.wp.x - cx, A.wp.z - cz) < 4 || A.t - A.wpT > 14) {
       const lim = BOUND - 10;
       A.wp = floor2
-        ? { x: (Math.random() * 2 - 1) * lim, z: (Math.random() * 2 - 1) * lim }
+        ? { x: Math.max(-lim, Math.min(lim, player.x + (Math.random() - 0.5) * 70)), z: Math.max(-lim, Math.min(lim, player.z + (Math.random() - 0.5) * 70)) }
         : { x: Math.max(-lim, Math.min(lim, player.x + (Math.random() - 0.5) * 90)), z: Math.max(-lim, Math.min(lim, player.z + (Math.random() - 0.5) * 90)) };
       A.wpT = A.t;
     }
     tx = A.wp.x; tz = A.wp.z;
+  }
+  if (A.distractT > 0) {   // a thrown decoy pulls it away unless you're right next to it
+    A.distractT -= dt;
+    if (dist > 9 && A.decoy) { tx = A.decoy.x; tz = A.decoy.z; if (Math.hypot(tx - cx, tz - cz) < 3) A.speedMul = 0.1; }
   }
   return { x: tx, z: tz };
 }
 function alertEnemies(x, z) {
   const A = chaserAI;
   A.target = { x, z }; A.alertT = 6;
+  if (extrasReady) { ls.tx = x; ls.tz = z; ls.hear = Math.max(ls.hear, 3); }   // the Listener hears it too
   if (floorNum < 2) setChaserHunt(false);
   else if (A.mode !== 'hunt') { A.mode = 'search'; A.searchT = 10; }
   if (floorNum > 1 && stalker.state === 'patrol') {
@@ -1701,6 +1725,51 @@ function descend() {
   showToast(floorNum === 2 ? 'PARKING GARAGE - P1. Sneak: crouch (C), stay out of the light.' : nameFor(floorNum) + ' - darker, faster');
 }
 // put the chaser somewhere open, minD..maxD from the player
+// Ambush: drop it AHEAD of you (along your path, or where you're looking if you're standing still),
+// hidden behind a wall or car, or far enough out that the fog hides it.
+// Is it in your view (about 35 degrees either side of where you look), unobstructed and visible?
+// Pitch dark counts as not seeing it, unless the torch is flickering on.
+function clearLine(x1, z1, x2, z2) {
+  for (let k = 1; k < 16; k++) {
+    const px = x1 + (x2 - x1) * k / 16, pz = z1 + (z2 - z1) * k / 16;
+    for (const w of wallColliders) if (Math.abs(px - w.x) < w.hw && Math.abs(pz - w.z) < w.hd) return false;
+  }
+  return true;
+}
+function chaserWatched() {
+  const dx = chaserSprite.position.x - player.x, dz = chaserSprite.position.z - player.z, d = Math.hypot(dx, dz);
+  if (d > 40 || d < 0.5) return false;
+  if ((dx * -Math.sin(player.yaw) + dz * -Math.cos(player.yaw)) / d < 0.82) return false;
+  if (flick.mode === 'black' && !(torch.on && flick.t > 0.5)) return false;
+  for (let k = 1; k < 14; k++) {
+    const px = player.x + dx * k / 14, pz = player.z + dz * k / 14;
+    for (const w of wallColliders) if (Math.abs(px - w.x) < w.hw && Math.abs(pz - w.z) < w.hd) return false;
+  }
+  if (!watchHinted && d < 35) { watchHinted = true; showToast('IT FREEZES WHEN YOU LOOK AT IT'); }
+  return true;
+}
+function placeChaserAhead(minD, maxD) {
+  const moving = Math.hypot(player.vx, player.vz) > 2;
+  const base = moving ? Math.atan2(player.vx, player.vz) : Math.atan2(-Math.sin(player.yaw), -Math.cos(player.yaw));
+  let best = null;
+  for (let i = 0; i < 60; i++) {
+    const ang = base + (Math.random() - 0.5) * 1.1, d = minD + Math.random() * (maxD - minD);
+    const x = player.x + Math.sin(ang) * d, z = player.z + Math.cos(ang) * d;
+    if (Math.abs(x) > BOUND || Math.abs(z) > BOUND || blocked(x, z, CHASER_RADIUS + 0.4, false)) continue;
+    let hidden = d > 38;
+    for (let k = 1; k < 20 && !hidden; k++) {
+      const px = player.x + (x - player.x) * k / 20, pz = player.z + (z - player.z) * k / 20;
+      for (const w of wallColliders) if (Math.abs(px - w.x) < w.hw && Math.abs(pz - w.z) < w.hd) { hidden = true; break; }
+    }
+    if (hidden) { best = { x, z }; break; }
+    if (!best) best = { x, z };   // fallback: at least it's ahead of you
+  }
+  if (!best) return placeChaserFar(minD, maxD);
+  chaserSprite.position.x = best.x; chaserSprite.position.z = best.z;
+  chaserVel.x = 0; chaserVel.z = 0;
+  chaserStuck.timer = 0; chaserStuck.escapeTimer = 0; chaserStuck.stuckFor = 0;
+  chaserStuck.lastX = best.x; chaserStuck.lastZ = best.z;
+}
 function placeChaserFar(minD, maxD) {
   for (let i = 0; i < 120; i++) {
     const ang = Math.random() * Math.PI * 2, d = minD + Math.random() * (maxD - minD);
@@ -1729,13 +1798,15 @@ function setupFloor(first) {
   setMusicForFloor();
   resetChaserAI();
   spawnStalker();
+  decoys = 3; decoyCd = 0; updateDecoyHud();
+  if (extrasReady) { spawnListener(); placeBatteries(); }
   cellsCollected = 0;
   exitActive = false; exitGroup.visible = false;
   flick.fogBase = Math.min(0.06, FOG_DENSITY + 0.004 * (floorNum - 1));
   flick.mode = 'none'; flick.next = (first ? 0 : elapsed) + 6 + Math.random() * 6;
   setLights(1, 1);
-  lunge.state = 'idle'; lunge.t = 0; lunge.defer = 0; lunge.soft = false;
-  lunge.next = (first ? 0 : elapsed) + Math.max(4, 10 + Math.random() * 6 - 1.2 * (floorNum - 1));
+  lunge.state = 'idle'; lunge.t = 0; lunge.defer = 0; lunge.soft = false; lunge.type = 'straight'; lunge.again = false;
+  lunge.next = (first ? 0 : elapsed) + Math.max(4, 8.5 + Math.random() * 6 - 1.2 * (floorNum - 1));
   warnEl.classList.remove('on'); warnEl.style.opacity = 0;
   cells.forEach((m, i) => {
     m.visible = i < cellsNeeded();
@@ -1797,11 +1868,13 @@ function torchClick() {
 function updateLights(dt) {
   if (flick.mode === 'none') {
     if (elapsed >= flick.next) {
-      if (floorNum >= 2 && Math.random() < 0.4) {
+      if (Math.random() < (floorNum >= 2 ? 0.4 : 0.25)) {   // floor 1 gets them too, a little less often
         flick.mode = 'black';
         flick.total = flick.t = BLACKOUT_MIN + Math.random() * BLACKOUT_VAR;
         newPattern(9, 0.03);                 // stutters down into darkness
         torch.on = false; torch.t = 1.0; torch.level = 0; // torch only comes on after a beat
+        torch.boost = 0;
+        if (batt > 0) { batt--; updateBattHud(); torch.boost = flick.total; showToast('BATTERY LOADED - TORCH STEADY'); }
       } else {
         flick.mode = 'flicker';
         flick.t = 0.9;
@@ -1824,6 +1897,7 @@ function updateLights(dt) {
     } else {
       lf = 0.03; lampLf = 0.03;             // pitch dark (street lamps dead too)...
       torch.t -= dt;                        // ...except for the dying torch
+      if ((torch.boost || 0) > 0) { torch.boost -= dt; torch.on = true; torch.level = 0.4; torch.t = 0.3; }   // fresh battery: steady light
       if (torch.t <= 0) {
         torch.on = !torch.on; torchClick();
         torch.t = torch.on ? 0.25 + Math.random() * 0.6 : 0.12 + Math.random() * 0.35; // short bursts, long-ish dropouts
@@ -1896,26 +1970,46 @@ function updateAdrenaline(dt, dist) {
   updateLights(dt);
   // --- lunge state machine ---
   if (lunge.state === 'idle') {
-    if (floorNum < 2 && chaserAI.mode === 'hunt' && elapsed >= lunge.next && dist < LUNGE_RANGE && dist >= LUNGE_MIN_DIST) {
+    if (chaserAI.mode === 'hunt' && !(chaserAI.distractT > 0) && elapsed >= lunge.next && dist < LUNGE_RANGE && dist >= LUNGE_MIN_DIST) {
       const low = sprint.exhausted || sprint.stamina < LOW_STAMINA;
       if (low && lunge.defer < LUNGE_DEFER_MAX) {
         lunge.defer += dt;                       // you're gassed: give you a few seconds to recover first
       } else {
         lunge.soft = low; lunge.defer = 0;       // still gassed after the grace period => weaker lunge
+        const r = Math.random(), g = floorNum > 1;
+        lunge.type = r < (g ? 0.2 : 0.45) ? 'straight' : r < (g ? 0.4 : 0.6) ? 'feint' : r < (g ? 0.6 : 0.75) ? 'flank' : r < (g ? 0.75 : 0.85) ? 'double' : 'ambush';
+        if (lunge.type === 'flank' || lunge.type === 'double') placeChaserFar(22, 30);   // it comes from a new direction
+        else if (lunge.type === 'ambush') placeChaserAhead(24, 40);                    // it appears ahead, out of sight
+        lunge.again = false;
         lunge.state = 'warn'; lunge.t = LUNGE_WARN;
         warnEl.classList.add('on'); stinger();
       }
     }
   } else if (lunge.state === 'warn') {
     lunge.t -= dt;
+    if (lunge.t <= 0) {
+      if (lunge.type === 'feint') {   // false alarm... then it comes anyway, with no warning
+        lunge.state = 'lull'; lunge.t = 1.4;
+        warnEl.classList.remove('on'); warnEl.style.opacity = 0;
+      } else { lunge.state = 'active'; lunge.t = LUNGE_TIME; }
+    }
+  } else if (lunge.state === 'lull') {
+    lunge.t -= dt;
     if (lunge.t <= 0) { lunge.state = 'active'; lunge.t = LUNGE_TIME; }
   } else {
     lunge.t -= dt;
-    if (lunge.t <= 0) {
-      lunge.state = 'idle';
-      lunge.next = elapsed + Math.max(4, 10 + Math.random() * 8 - 1.2 * (floorNum - 1));
+    if (lunge.t <= 0 && lunge.type === 'double' && !lunge.again) {   // a second rush from somewhere else
+      lunge.again = true; placeChaserFar(22, 30);
+      lunge.state = 'warn'; lunge.t = 0.6;
+      warnEl.classList.add('on'); stinger();
+    } else if (lunge.t <= 0) {
+      lunge.state = 'idle'; lunge.again = false;
+      lunge.next = elapsed + Math.max(4, 8.5 + Math.random() * 8 - 1.2 * (floorNum - 1));
       warnEl.classList.remove('on'); warnEl.style.opacity = 0;
       sprint.regenDelay = 0; // second wind: stamina starts coming back right away after a lunge
+      if (Math.hypot(chaserSprite.position.x - player.x, chaserSprite.position.z - player.z) < 9) {   // survived it up close
+        sprint.stamina = STAMINA_MAX; sprint.exhausted = false; fx.pulse = 1; showToast('CLOSE CALL - SECOND WIND');
+      }
     }
   }
   if (lunge.state !== 'idle') warnDirEl.textContent = chaserDirText();
@@ -1942,6 +2036,14 @@ function updateAdrenaline(dt, dist) {
   fx.fov += (fovTarget - fx.fov) * (1 - Math.exp(-6 * dt));
   if (Math.abs(camera.fov - fx.fov) > 0.01) { camera.fov = fx.fov; camera.updateProjectionMatrix(); }
 
+  // --- key sense: a faint tick that speeds up as you near an uncollected key ---
+  keyTick -= dt;
+  if (keyTick <= 0) {
+    let kd = 1e9;
+    for (const m of cells) if (m.visible) kd = Math.min(kd, Math.hypot(m.position.x - player.x, m.position.z - player.z));
+    keyTick = kd < 30 ? 0.18 + kd / 30 * 1.4 : 0.5;
+    if (kd < 30) keyBlip();
+  }
   // --- energy cells: spin, and collect on touch ---
   for (const m of cells) {
     if (!m.visible) continue;
@@ -1968,7 +2070,7 @@ function updateAdrenaline(dt, dist) {
     4.2 * grow * (1 + (Math.random() - 0.5) * amp),
     4.2 * grow * (1 + (Math.random() - 0.5) * amp * 1.6), 1);
   chaserSprite.material.opacity = (lungeOn && Math.random() < 0.12) ? 0.45 : 1; // glitchy flicker mid-lunge
-  if (lungeOn || warnOn) chaserSprite.material.color.setRGB(1, 0.4, 0.4); else chaserSprite.material.color.setRGB(1, 1, 1);
+  if (lungeOn || warnOn) chaserSprite.material.color.setRGB(1, 0.4, 0.4); else chaserSprite.material.color.setRGB(1 - 0.25 * chaserWatch, 1 - 0.08 * chaserWatch, 1);
 
   // --- elevator exit ---
   if (exitActive) {
@@ -2047,7 +2149,7 @@ function tryTeleportChaser() {
 
 function startGame(startFloor) {
   resetPositions();
-  cheat.tainted = cheat.god;
+  cheat.tainted = cheat.god; watchHinted = false; chaserWatch = 0; batt = 0; updateBattHud();
   paused = false; document.body.classList.remove('paused');
   document.getElementById('pauseOverlay').classList.add('hidden');
   // Floor 2 is unlocked once you've reached the garage; the admin panel can start on any floor
@@ -2145,6 +2247,137 @@ document.addEventListener('pointerlockchange', () => {
   if (!isTouch && running && !paused && document.pointerLockElement !== canvas) pauseGame();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+
+// ---------- batteries: pick them up and one powers the torch steadily through your next blackout ----------
+function updateBattHud() { document.getElementById('battTag').textContent = batt > 0 ? 'Batteries ' + batt : ''; }
+const battMeshes = [0, 1].map(() => {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.7, 10), new THREE.MeshBasicMaterial({ color: 0xffe27a })));
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.16, 8), new THREE.MeshBasicMaterial({ color: 0xbbbbbb })); cap.position.y = 0.43; g.add(cap);
+  g.visible = false; scene.add(g); return g;
+});
+function placeBatteries() {
+  battMeshes.forEach((m) => {
+    m.visible = false;
+    for (let i = 0; i < 80; i++) {
+      const x = (Math.random() * 2 - 1) * (BOUND - 16), z = (Math.random() * 2 - 1) * (BOUND - 16);
+      if (Math.hypot(x, z) < 20 || blocked(x, z, 1.3, false)) continue;
+      m.position.set(x, 0.9, z); m.visible = true; break;
+    }
+  });
+}
+function updateBatteries(dt) {
+  for (const m of battMeshes) {
+    if (!m.visible) continue;
+    m.rotation.y += dt * 2; m.position.y = 0.9 + Math.sin(elapsed * 3 + m.position.x) * 0.12;
+    if (Math.hypot(m.position.x - player.x, m.position.z - player.z) < 1.7) {
+      m.visible = false; batt++; updateBattHud(); pickupChime(); showToast('BATTERY FOUND - POWERS THE TORCH IN A BLACKOUT');
+    }
+  }
+}
+
+// ---------- the Listener: blind, only reacts to noise. Stand still or crouch and it loses you ----------
+const lsMat = new THREE.MeshLambertMaterial({ color: 0x2a2523 }), lsEar = new THREE.MeshBasicMaterial({ color: 0xcdbfae, side: THREE.DoubleSide });
+const listener = new THREE.Group();
+const lsBody = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.55, 3.6, 8), lsMat); lsBody.position.y = 1.8; listener.add(lsBody);
+const lsHead = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), lsMat); lsHead.scale.set(0.8, 1.2, 0.8); lsHead.position.y = 4.1; listener.add(lsHead);
+[-1, 1].forEach((sx) => {
+  const e = new THREE.Mesh(new THREE.CircleGeometry(0.95, 14), lsEar);
+  e.scale.set(0.55, 1, 1); e.position.set(sx * 0.62, 4.3, 0); e.rotation.y = sx * 0.9; listener.add(e);
+});
+listener.scale.setScalar(0.75); listener.visible = false; scene.add(listener);
+const ls = { on: false, x: 0, z: 0, tx: 0, tz: 0, hear: 0, step: 0, yaw: 0, hinted: false };
+function spawnListener() {
+  ls.on = false; listener.visible = false;
+  for (let i = 0; i < 80; i++) {
+    const ang = Math.random() * Math.PI * 2, d = 60 + Math.random() * 35;
+    const x = Math.max(-BOUND + 8, Math.min(BOUND - 8, Math.sin(ang) * d)), z = Math.max(-BOUND + 8, Math.min(BOUND - 8, Math.cos(ang) * d));
+    if (blocked(x, z, 1.2, false)) continue;
+    ls.x = x; ls.z = z; ls.on = true; ls.hear = 0; ls.step = 0; ls.yaw = Math.random() * 6.28; listener.visible = true; break;
+  }
+}
+function updateListener(dt) {
+  if (!ls.on || !running) return;
+  const dx = player.x - ls.x, dz = player.z - ls.z, dist = Math.hypot(dx, dz);
+  const still = Math.hypot(player.vx, player.vz) < 0.4;
+  const heardR = still ? 0 : noiseRadius() * (floorNum > 1 ? 1.3 : 1);
+  if (dist < heardR) {
+    ls.tx = player.x; ls.tz = player.z; ls.hear = 2.2;
+    if (!ls.hinted) { ls.hinted = true; showToast('THE LISTENER HEARD YOU - FREEZE'); }
+  }
+  let moving = false;
+  if (ls.hear > 0) {   // charging at the last sound it heard
+    ls.hear -= dt;
+    const tx = ls.tx - ls.x, tz = ls.tz - ls.z, td = Math.hypot(tx, tz);
+    ls.yaw = Math.atan2(tx, tz);
+    if (td > 1.5) {
+      const sp = PLAYER_SPEED * 1.35 * dt, nx = ls.x + tx / td * sp, nz = ls.z + tz / td * sp;
+      if (!blocked(nx, ls.z, 0.9, false)) ls.x = nx;
+      if (!blocked(ls.x, nz, 0.9, false)) ls.z = nz;
+      moving = true;
+    }
+  }
+  listener.position.set(ls.x, 0, ls.z);
+  listener.rotation.y = ls.yaw + (moving ? 0 : Math.sin(elapsed * 1.3) * 0.35);   // ears sweep while it listens
+  if (moving) { ls.step -= dt; if (ls.step <= 0) { ls.step = 0.32; thump(0, Math.min(0.5, 0.5 * Math.pow(Math.max(0, 1 - dist / 60), 2))); } }
+  if (dist < 2) endGame();
+}
+extrasReady = true; spawnListener(); placeBatteries();
+
+// ---------- key blip + phantom ----------
+function keyBlip() {
+  const a = audioCtx(); if (!a || muted) return;
+  const t = a.currentTime, o = a.createOscillator(), g = a.createGain();
+  o.type = 'sine'; o.frequency.value = 1250;
+  g.gain.setValueAtTime(0.035, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.08);
+}
+// In blackouts a pale copy of it walks at you, glowing in the dark. It isn't real: look at it and it dissolves,
+// but if it reaches you it drains your stamina.
+const phantom = new THREE.Sprite(chaserSprite.material.clone());
+phantom.material.fog = false; phantom.material.transparent = true; phantom.material.opacity = 0;
+phantom.scale.set(4.2, 4.2, 1); phantom.visible = false; scene.add(phantom);
+const ph = { on: false, used: false, seen: 0, x: 0, z: 0 };
+function endPhantom() { ph.on = false; phantom.visible = false; }
+function updatePhantom(dt) {
+  if (!running) { endPhantom(); return; }
+  const black = flick.mode === 'black';
+  if (!black) { ph.used = false; if (ph.on) endPhantom(); return; }
+  if (phantom.material.map !== chaserSprite.material.map) { phantom.material.map = chaserSprite.material.map; phantom.material.needsUpdate = true; }
+  if (!ph.on && !ph.used && patternDone() && Math.random() < dt * 0.6) {
+    const ang = Math.random() * Math.PI * 2, d = 30 + Math.random() * 10;
+    ph.x = Math.max(-BOUND, Math.min(BOUND, player.x + Math.sin(ang) * d)); ph.z = Math.max(-BOUND, Math.min(BOUND, player.z + Math.cos(ang) * d));
+    ph.on = true; ph.used = true; ph.seen = 0; phantom.visible = true;
+  }
+  if (!ph.on) return;
+  const dx = player.x - ph.x, dz = player.z - ph.z, d = Math.hypot(dx, dz) || 1;
+  ph.x += dx / d * 3.4 * dt; ph.z += dz / d * 3.4 * dt;
+  phantom.position.set(ph.x, 2.1, ph.z);
+  phantom.material.opacity = 0.42 + Math.random() * 0.16;
+  const inView = d < 45 && (-dx * -Math.sin(player.yaw) + -dz * -Math.cos(player.yaw)) / d > 0.8;   // you're looking at it
+  ph.seen = inView ? ph.seen + dt : Math.max(0, ph.seen - dt);
+  if (ph.seen > 0.5) { endPhantom(); thump(0, 0.15); showToast('A PHANTOM - IT VANISHES WHEN WATCHED'); }
+  else if (d < 2.2) { endPhantom(); sprint.stamina = Math.max(0, sprint.stamina - 50); fx.pulse = 1; stinger(); showToast('A PHANTOM TOUCHED YOU - DRAINED'); }
+}
+
+// ---------- decoys ----------
+function updateDecoyHud() { document.getElementById('decoyTag').textContent = 'Decoys ' + decoys; }
+function throwDecoy() {
+  if (!running || paused || decoys <= 0 || elapsed < decoyCd) return;
+  decoys--; decoyCd = elapsed + 1.2; updateDecoyHud();
+  const fx_ = -Math.sin(player.yaw), fz_ = -Math.cos(player.yaw);
+  let d = 4;
+  while (d < 24 && !blocked(player.x + fx_ * (d + 2), player.z + fz_ * (d + 2), 0.3, false)) d += 2;
+  const x = player.x + fx_ * d, z = player.z + fz_ * d;
+  thump(0, 0.3); thump(0.07, 0.2); thump(0.16, 0.12);   // it clatters across the floor
+  chaserAI.distractT = 5; chaserAI.decoy = { x, z };
+  alertEnemies(x, z);
+  showToast('DECOY THROWN - IT HEARD THAT');
+}
+const throwBtnEl = document.getElementById('throwBtn');
+throwBtnEl.addEventListener('pointerdown', (e) => { e.preventDefault(); throwDecoy(); });
+throwBtnEl.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); }, { passive: false });
+updateDecoyHud();
 
 // ---------- low graphics mode ----------
 const gfxBtns = document.querySelectorAll('[data-gfx]');
@@ -2372,6 +2605,9 @@ function update(dt) {
   const dist = Math.hypot(player.x - chaserSprite.position.x, player.z - chaserSprite.position.z);
   const aiTarget = updateChaserAI(dt, dist);
   chaserSpeed *= chaserAI.speedMul;
+  // "weeping" rule: while you hold it in view it only creeps; look away and it closes in fast
+  chaserWatch += (((lunge.state === 'idle' && chaserWatched()) ? 1 : 0) - chaserWatch) * (1 - Math.exp(-10 * dt));
+  chaserSpeed *= 1.08 - 0.86 * chaserWatch;
   const toPlayer = new THREE.Vector2(
     aiTarget.x - chaserSprite.position.x,
     aiTarget.z - chaserSprite.position.z
@@ -2506,7 +2742,7 @@ function update(dt) {
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
-  if (!paused) { update(dt); updateRain(dt); updateCulling(dt); }
+  if (!paused) { update(dt); updateRain(dt); updateCulling(dt); updatePhantom(dt); updateListener(dt); updateBatteries(dt); }
   document.body.classList.toggle('menu-open', !running || paused);
   renderer.render(scene, camera);
 }
